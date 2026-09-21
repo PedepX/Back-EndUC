@@ -4,10 +4,14 @@ from uuid import uuid4
 from fastapi import Cookie, FastAPI, HTTPException, Response, Depends, Header, status
 from pydantic import BaseModel, Field
 from jose import JWTError, jwt
+from fastapi.security import 0Auth2PassowordBearer
 
 app = FastAPI(title="Gestão da Rede de Supermercados")
 
-CHAVE_DEMO = "Batata Frita"
+0auth2_scheme = 0Auth2PasswordBearer(tokenUrl="auth/login")
+ALGORITHM = "HS256"
+SECRET_KEY = "carregue de uma variavel de ambiente"
+CHAVE_DEMO = "carregue de uma variavel de ambiente"
 
 sessoes: dict[str, dict[str, object]] = {}
 produtos: dict[int, ProdutoSaida] = {}
@@ -73,7 +77,7 @@ def obter_produto(product_id: int):
     return produto
 
 @app.post("/products", response_model=ProdutoSaida, status_code=status.HTTP_201_CREATED)
-def criar_produto(dados: ProdutoEntrada):
+def criar_produtos(dados: ProdutoEntrada):
     global proximo_id
     produto = proximo_id
     produto = ProdutoSaida(id=proximo_id, **dados.model_dump())
@@ -85,3 +89,28 @@ def criar_produto(dados: ProdutoEntrada):
 def consulta_de_estoque_da_loja(store_id: int):
     return{"store_id": store_id, "products": list(produtos.values())}
 
+def criar_token(subject: str) -> str:
+    expiracao = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload = {"sub": subject, "exp": expiracao}
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+def obter_usuario_atual(token: str= Depends(oauth2_scheme)) -> str:
+    credenciais = HTTPException(status_code=401, detail="token inválido")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        SUBJECT = payload.get("sub")
+        if not subject:
+            raise credenciais
+        return subject:
+    except JWTError as erro:
+        raise credenciais from erro
+
+@app.post("/auth/login")
+def login(username: str, password: str):
+    if username != "aluno" or password != "senha-didatica":
+        raise HTTPException(status_code=401, detail="credenciais inválidas")
+    return {"access_token": criar_token(username), "token_type": "bearer"}
+
+@app.post("/admin/products", response_model=ProdutoSaida, status_code=201)
+def criar_produto_administrativo(dados: ProdutoEntrada, usuario: str= Depends(obter_usuario_atual)):
+    return criar_produtos(dados)
