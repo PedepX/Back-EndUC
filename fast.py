@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi import Cookie, FastAPI, HTTPException, Response, Depends, Header, status
 from pydantic import BaseModel, Field
+from jose import JWTError, jwt
 
 app = FastAPI(title="Gestão da Rede de Supermercados")
 
