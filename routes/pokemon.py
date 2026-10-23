@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from loguru import logger
 
 from models.pokemon import Pokemon
 from schema.pokemon import PokemonReq
@@ -18,6 +19,10 @@ def cadastrar_pokemon(dados: PokemonReq):
     ).first()
 
     if pokemon_existente:
+        logger.warning(
+            "Cadastro rejeitado: Pokémon da Pokédex {} já existe",
+            dados.idpokedex
+        )
         raise HTTPException(
             status_code=400,
             detail="Pokémon já foi cadastrado"
@@ -32,6 +37,11 @@ def cadastrar_pokemon(dados: PokemonReq):
     )
 
     pokemon.save()
+    logger.info(
+        "Pokémon cadastrado: Pokédex {} ({})",
+        pokemon.idpokedex,
+        pokemon.nome
+    )
 
     return {
         "mensagem": "Pokémon cadastrado com sucesso!",
@@ -53,11 +63,16 @@ def buscar_pokemon(idpokedex: int):
     ).first()
 
     if not pokemon:
+        logger.warning(
+            "Busca falhou: Pokémon da Pokédex {} não encontrado",
+            idpokedex
+        )
         raise HTTPException(
             status_code=404,
             detail="Pokémon não encontrado"
         )
 
+    logger.info("Pokémon consultado: Pokédex {}", idpokedex)
     return {
         "idpokedex": pokemon.idpokedex,
         "nome": pokemon.nome,
@@ -78,6 +93,10 @@ def atualizar_pokemon(
     ).first()
 
     if not pokemon:
+        logger.warning(
+            "Atualização falhou: Pokémon da Pokédex {} não encontrado",
+            idpokedex
+        )
         raise HTTPException(
             status_code=404,
             detail="Pokémon não encontrado"
@@ -86,6 +105,7 @@ def atualizar_pokemon(
     pokemon.update(**pokemon_dados.dict())
 
     pokemon.reload()
+    logger.info("Pokémon atualizado: Pokédex {}", idpokedex)
 
     return {
         "message": "Pokémon atualizado com sucesso",
@@ -107,12 +127,17 @@ def deletar_pokemon(idpokedex: int):
     ).first()
 
     if not pokemon:
+        logger.warning(
+            "Exclusão falhou: Pokémon da Pokédex {} não encontrado",
+            idpokedex
+        )
         raise HTTPException(
             status_code=404,
             detail="Pokémon não encontrado"
         )
 
     pokemon.delete()
+    logger.info("Pokémon excluído: Pokédex {}", idpokedex)
 
     return {
         "message": "Pokémon deletado da Pokedex com sucesso!"
